@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 
-	"golang.org/x/net/html"
+	"github.com/antchfx/htmlquery"
 )
 
 func main() {
@@ -20,25 +21,32 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println(string(body))
 
-	doc, err := html.Parse(strings.NewReader(string(body)))
+	// Parse the HTML document
+	doc, err := htmlquery.Parse(strings.NewReader(string(body)))
 	if err != nil {
 		panic(err)
 	}
 
-	var f func(*html.Node)
-	f = func(n *html.Node) {
-		if n.Type == html.ElementNode && n.Data == "div" {
-			// Print the class attribute
-			for _, a := range n.Attr {
-				if a.Key == "class" {
-					fmt.Println(a.Val)
-				}
-			}
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			f(c)
+	// Create a new file
+	file, err := os.Create("output.md")
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+
+	// Use the XPath expression to select the h6 elements
+	nodes, err := htmlquery.QueryAll(doc, `//h6`)
+	if err != nil {
+		panic(err)
+	}
+
+	// Write the inner text of each selected element to the file
+	for _, node := range nodes {
+		_, err := file.WriteString(htmlquery.InnerText(node) + "\n")
+		if err != nil {
+			panic(err)
 		}
 	}
-	f(doc)
 }
